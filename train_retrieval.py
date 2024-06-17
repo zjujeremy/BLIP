@@ -101,7 +101,7 @@ def get_mm_representation_emb(model, data_loader, device, config):
         # print("mm_feat_emb,size() = ", mm_feat_emb.size())
         feat = [list(f.cpu().numpy()) for f in mm_feat_emb]
         # print("feat[0] = ", feat[0])
-        print("image_path = ", image_path)
+        # print("image_path = ", image_path)
         for j in range(len(feat)):
             output_file_name = image_path[j].split('/')[-1].split('.')[0] + '.txt'
             output_file_path = os.path.join(output_dir, output_file_name)
