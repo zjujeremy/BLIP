@@ -78,6 +78,9 @@ def get_mm_representation_emb(model, data_loader, device, config):
 
     print_freq = 50
     mm_feat_embs = []
+    output_dir = "./mm_representation"
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
     for i,(image, caption, image_path) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         image = image.to(device) 
         image_feat = model.visual_encoder(image)
@@ -95,9 +98,16 @@ def get_mm_representation_emb(model, data_loader, device, config):
                                     return_dict = True,
                                    )
         mm_feat_emb = output.last_hidden_state[:,0,:]  
-        print("mm_feat_emb,size() = ", mm_feat_emb.size())
-        # feat = [','.join(list(f.cpu().numpy())) for f in mm_feat_emb]
-        print("feat[0] = ", ','.join(list(mm_feat_emb[0].cpu().numpy())))
+        # print("mm_feat_emb,size() = ", mm_feat_emb.size())
+        feat = [list(f.cpu().numpy()) for f in mm_feat_emb]
+        # print("feat[0] = ", feat[0])
+        for j in len(feat):
+            output_file_name = image_path[j].split('/')[-1].split('.')[0] + '.txt'
+            output_file_path = os.path.join(output_dir, output_file_name)
+            with open(output_file_path, "w") as fout:
+                fout.write(image_path[j] + '\n')
+                fout.write(caption[j] + '\n')
+                fout.write(feat[j])
         mm_feat_embs.append(mm_feat_emb) 
         
     total_time = time.time() - start_time
