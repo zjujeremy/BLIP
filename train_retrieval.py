@@ -96,8 +96,8 @@ def get_mm_representation_emb(model, data_loader, device, config):
                                    )
         mm_feat_emb = output.last_hidden_state[:,0,:]  
         print("mm_feat_emb,size() = ", mm_feat_emb.size())
-        feat = [','.join(f) for f in list(mm_feat_emb.to('cpu'))]
-        print("feat[0] = ", feat[0])
+        # feat = [','.join(f) for f in list(mm_feat_emb.to('cpu'))]
+        print("feat[0] = ", list(mm_feat_emb.to('cpu')))
         mm_feat_embs.append(mm_feat_emb) 
         
     total_time = time.time() - start_time
