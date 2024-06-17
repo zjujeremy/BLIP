@@ -66,6 +66,45 @@ def train(model, data_loader, optimizer, epoch, device, config):
 
 
 @torch.no_grad()
+def get_mm_representation_emb(model, data_loader, device, config):
+    # test
+    model.eval() 
+    
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    header = 'Evaluation:'    
+    
+    print('Computing features for evaluation...')
+    start_time = time.time()  
+        
+    mm_feat_embs = []
+    for i,(image, caption, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        image = image.to(device) 
+        image_feat = model.visual_encoder(image)
+    
+        # topk_sim, topk_idx = sims.topk(k=config['k_test'], dim=0)
+        encoder_output = image_feat.to(device)
+        encoder_att = torch.ones(encoder_output.size()[:-1],dtype=torch.long).to(device)
+
+        text_input = model.tokenizer(caption, padding='max_length', truncation=True, max_length=35, return_tensors="pt").to(device) 
+        text_input.input_ids[:,0] = model.tokenizer.enc_token_id
+        output = model.text_encoder(text_input.input_ids, 
+                                    attention_mask = text_input.attention_mask,
+                                    encoder_hidden_states = encoder_output,
+                                    encoder_attention_mask = encoder_att,                             
+                                    return_dict = True,
+                                   )
+        mm_feat_emb = output.last_hidden_state[:,0,:]  
+        print("mm_feat_emb,size() = ", mm_feat_emb.size())   
+        mm_feat_embs.append(mm_feat_emb) 
+        
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print('Evaluation time {}'.format(total_time_str)) 
+
+    return mm_feat_embs
+
+
+@torch.no_grad()
 def evaluation(model, data_loader, device, config):
     # test
     model.eval() 
@@ -266,58 +305,63 @@ def main(args, config):
     print("Start training")
     start_time = time.time()    
 
-    for epoch in range(0, config['max_epoch']):    
-        if not args.evaluate:        
-            if args.distributed:
-                train_loader.sampler.set_epoch(epoch)
-                
-            cosine_lr_schedule(optimizer, epoch, config['max_epoch'], config['init_lr'], config['min_lr'])
-            
-            train_stats = train(model, train_loader, optimizer, epoch, device, config)  
-            
-        score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, device, config)
-        score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, device, config)
-    
-        if utils.is_main_process():  
-      
-            val_result = itm_eval(score_val_i2t, score_val_t2i, val_loader.dataset.txt2img, val_loader.dataset.img2txt)  
-            print(val_result)
-                                
-            if val_result['r_mean']>best:
-                save_obj = {
-                    'model': model_without_ddp.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-                    'config': config,
-                    'epoch': epoch,
-                }
-                torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
-                best = val_result['r_mean']        
-                best_epoch = epoch  
-                
-                test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt) 
-                print(test_result)
-            
-            if args.evaluate:                
-                log_stats = {**{f'val_{k}': v for k, v in val_result.items()},
-                             **{f'test_{k}': v for k, v in test_result.items()},                  
-                            }
-                with open(os.path.join(args.output_dir, "evaluate.txt"),"a") as f:
-                    f.write(json.dumps(log_stats) + "\n")     
-            else:
-                log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                             **{f'val_{k}': v for k, v in val_result.items()},
-                             **{f'test_{k}': v for k, v in test_result.items()},  
-                             'epoch': epoch,
-                             'best_epoch': best_epoch,
-                            }
-                with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
-                    f.write(json.dumps(log_stats) + "\n")   
+    for epoch in range(0, config['max_epoch']): 
+        if not args.get_represent_feat: 
+            if not args.evaluate:        
+                if args.distributed:
+                    train_loader.sampler.set_epoch(epoch)
                     
-        if args.evaluate: 
-            break
+                cosine_lr_schedule(optimizer, epoch, config['max_epoch'], config['init_lr'], config['min_lr'])
+                
+                train_stats = train(model, train_loader, optimizer, epoch, device, config)  
+                
+            score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, device, config)
+            score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, device, config)
+        
+            if utils.is_main_process():  
+        
+                val_result = itm_eval(score_val_i2t, score_val_t2i, val_loader.dataset.txt2img, val_loader.dataset.img2txt)  
+                print(val_result)
+                                    
+                if val_result['r_mean']>best:
+                    save_obj = {
+                        'model': model_without_ddp.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+                        'config': config,
+                        'epoch': epoch,
+                    }
+                    torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
+                    best = val_result['r_mean']        
+                    best_epoch = epoch  
+                    
+                    test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt) 
+                    print(test_result)
+                
+                if args.evaluate:                
+                    log_stats = {**{f'val_{k}': v for k, v in val_result.items()},
+                                **{f'test_{k}': v for k, v in test_result.items()},                  
+                                }
+                    with open(os.path.join(args.output_dir, "evaluate.txt"),"a") as f:
+                        f.write(json.dumps(log_stats) + "\n")     
+                else:
+                    log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                                **{f'val_{k}': v for k, v in val_result.items()},
+                                **{f'test_{k}': v for k, v in test_result.items()},  
+                                'epoch': epoch,
+                                'best_epoch': best_epoch,
+                                }
+                    with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+                        f.write(json.dumps(log_stats) + "\n")   
+                        
+            if args.evaluate: 
+                break
 
-        dist.barrier()     
-        torch.cuda.empty_cache()
+            dist.barrier()     
+            torch.cuda.empty_cache()
+        else:
+            get_mm_representation_emb(model, train_loader, device, config)
+            print("get_mm_representation_emb done!!")
+            break
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -329,6 +373,7 @@ if __name__ == '__main__':
     parser.add_argument('--config', default='./configs/retrieval_flickr.yaml')
     parser.add_argument('--output_dir', default='output/Retrieval_flickr')        
     parser.add_argument('--evaluate', action='store_true')
+    parser.add_argument('--get_represent_feat', action='store_true')
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')    
