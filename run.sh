@@ -1,4 +1,4 @@
-python -m torch.distributed.run --nproc_per_node=8 train_retrieval.py \
+python -m torch.distributed.run --nproc_per_node=1 train_retrieval.py \
 --config ./configs/retrieval_coco.yaml \
 --output_dir output/retrieval_coco \
 --get_represent_feat
