@@ -108,7 +108,7 @@ def get_mm_representation_emb(model, data_loader, device, config):
             with open(output_file_path, "w") as fout:
                 fout.write(image_path[j] + '\n')
                 fout.write(caption[j] + '\n')
-                fout.write(feat[j])
+                fout.write(','.join([str(l) for l in feat[j]]))
         mm_feat_embs.append(mm_feat_emb) 
         
     total_time = time.time() - start_time
