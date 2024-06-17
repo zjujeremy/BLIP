@@ -75,7 +75,8 @@ def get_mm_representation_emb(model, data_loader, device, config):
     
     print('Computing features for evaluation...')
     start_time = time.time()  
-        
+
+    print_freq = 50
     mm_feat_embs = []
     for i,(image, caption, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         image = image.to(device) 
