@@ -78,7 +78,7 @@ def get_mm_representation_emb(model, data_loader, device, config):
 
     print_freq = 50
     mm_feat_embs = []
-    for i,(image, caption, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for i,(image, caption, image_path) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         image = image.to(device) 
         image_feat = model.visual_encoder(image)
     
@@ -95,7 +95,9 @@ def get_mm_representation_emb(model, data_loader, device, config):
                                     return_dict = True,
                                    )
         mm_feat_emb = output.last_hidden_state[:,0,:]  
-        print("mm_feat_emb,size() = ", mm_feat_emb.size())   
+        print("mm_feat_emb,size() = ", mm_feat_emb.size())
+        feat = [','.join(f) for f in list(mm_feat_emb.to('cpu'))]
+        print("feat[0] = ", feat[0])
         mm_feat_embs.append(mm_feat_emb) 
         
     total_time = time.time() - start_time
@@ -269,7 +271,7 @@ def main(args, config):
 
     #### Dataset #### 
     print("Creating retrieval dataset")
-    train_dataset, val_dataset, test_dataset = create_dataset('retrieval_%s'%config['dataset'], config)  
+    train_dataset, val_dataset, test_dataset = create_dataset('retrieval_%s'%config['dataset'], config, mode=args.mode)  
 
     if args.distributed:
         num_tasks = utils.get_world_size()
@@ -375,6 +377,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', default='output/Retrieval_flickr')        
     parser.add_argument('--evaluate', action='store_true')
     parser.add_argument('--get_represent_feat', action='store_true')
+    parser.add_argument('--mode', default='train')
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')    

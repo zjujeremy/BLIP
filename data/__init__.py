@@ -11,7 +11,7 @@ from data.nlvr_dataset import nlvr_dataset
 from data.pretrain_dataset import pretrain_dataset
 from transform.randaugment import RandomAugment
 
-def create_dataset(dataset, config, min_scale=0.5):
+def create_dataset(dataset, config, min_scale=0.5, mode='train'):
     
     normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
 
@@ -45,7 +45,7 @@ def create_dataset(dataset, config, min_scale=0.5):
         return val_dataset, test_dataset   
     
     elif dataset=='retrieval_coco':          
-        train_dataset = coco_karpathy_train(transform_train, config['image_root'], config['ann_root'])
+        train_dataset = coco_karpathy_train(transform_train, config['image_root'], config['ann_root'], mode=mode)
         val_dataset = coco_karpathy_retrieval_eval(transform_test, config['image_root'], config['ann_root'], 'val') 
         test_dataset = coco_karpathy_retrieval_eval(transform_test, config['image_root'], config['ann_root'], 'test')          
         return train_dataset, val_dataset, test_dataset    

@@ -9,7 +9,7 @@ from PIL import Image
 from data.utils import pre_caption
 
 class coco_karpathy_train(Dataset):
-    def __init__(self, transform, image_root, ann_root, max_words=30, prompt=''):        
+    def __init__(self, transform, image_root, ann_root, max_words=30, prompt='', mode='train'):        
         '''
         image_root (string): Root directory of images (e.g. coco/images/)
         ann_root (string): directory to store the annotation file
@@ -19,6 +19,7 @@ class coco_karpathy_train(Dataset):
 
         download_url(url,ann_root)
         
+        self.mode = mode
         self.annotation = json.load(open(os.path.join(ann_root,filename),'r'))
         self.transform = transform
         self.image_root = image_root
@@ -46,7 +47,7 @@ class coco_karpathy_train(Dataset):
         
         caption = self.prompt+pre_caption(ann['caption'], self.max_words) 
 
-        return image, caption, self.img_ids[ann['image_id']] 
+        return image, caption, self.img_ids[ann['image_id']]  if self.mode == 'train' else os.path.join(self.image_root,ann['image'])
     
     
 class coco_karpathy_caption_eval(Dataset):
