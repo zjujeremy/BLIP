@@ -73,7 +73,7 @@ def get_mm_representation_emb(model, data_loader, device, config):
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Evaluation:'    
     
-    print('Computing features for evaluation...')
+    print('Computing features for clustering...')
     start_time = time.time()  
 
     print_freq = 50
@@ -360,7 +360,7 @@ def main(args, config):
             dist.barrier()     
             torch.cuda.empty_cache()
         else:
-            get_mm_representation_emb(model, train_loader, device, config)
+            get_mm_representation_emb(model_without_ddp, train_loader, device, config)
             print("get_mm_representation_emb done!!")
             break
 

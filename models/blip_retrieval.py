@@ -264,6 +264,7 @@ class BLIP_Retrieval(nn.Module):
 def blip_retrieval(pretrained='',**kwargs):
     model = BLIP_Retrieval(**kwargs)
     if pretrained:
+        print("load pretrain model....")
         model,msg = load_checkpoint(model,pretrained)
         print("missing keys:")
         print(msg.missing_keys)
